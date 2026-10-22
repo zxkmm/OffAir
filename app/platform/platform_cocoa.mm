@@ -1,4 +1,5 @@
 #include "platform.h"
+#include "dect2/net/net_policy.h"
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
@@ -98,12 +99,14 @@ bool decodeImage(const std::string& path, int& w, int& h, std::vector<uint32_t>&
 }
 
 bool fetchUrl(const std::string& url, const std::string& file, const std::string& userAgent) {
+    if (!dect2::internetAllowedUrl(url)) return false;
     auto q = [](const std::string& s) { std::string o = "'"; for (char c : s) { if (c == '\'') o += "'\\''"; else o += c; } return o + "'"; };
     const std::string cmd = "curl -fsSL --max-time 12 -A " + q(userAgent) + " -o " + q(file) + " " + q(url) + " 2>/dev/null";
     return system(cmd.c_str()) == 0;
 }
 
 static bool postImpl(const std::string& url, const std::string& json, const std::string& userAgent, std::string* reply) {
+    if (!dect2::internetAllowedUrl(url)) return false;
     @autoreleasepool {
         NSURL* u = [NSURL URLWithString:[NSString stringWithUTF8String:url.c_str()]];
         if (!u) return false;
@@ -126,6 +129,7 @@ static bool postImpl(const std::string& url, const std::string& json, const std:
 }
 
 bool postRequest(const std::string& url, const std::string& body, const std::string& contentType, const std::vector<std::string>& headers, const std::string& userAgent) {
+    if (!dect2::internetAllowedUrl(url)) return false;
     @autoreleasepool {
         NSURL* u = [NSURL URLWithString:[NSString stringWithUTF8String:url.c_str()]];
         if (!u) return false;
@@ -157,6 +161,7 @@ bool postRequest(const std::string& url, const std::string& body, const std::str
 
 HttpResult httpRequest(const std::string& method, const std::string& url, const std::string& body, const std::string& userAgent, int timeoutSec) {
     HttpResult r;
+    if (!dect2::internetAllowedUrl(url)) { r.net = 2; r.detail = "blocked by offline mode"; return r; }
     @autoreleasepool {
         NSURL* u = [NSURL URLWithString:[NSString stringWithUTF8String:url.c_str()]];
         if (!u) { r.net = 4; r.detail = "bad URL"; return r; }

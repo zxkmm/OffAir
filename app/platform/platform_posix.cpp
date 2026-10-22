@@ -2,6 +2,7 @@
 // Windows: the standard Open/Save dialogs, settings in %APPDATA%\\OnAir\\settings.conf.
 #include "platform.h"
 #include "dect2/common/png.h"
+#include "dect2/net/net_policy.h"
 #include <algorithm>
 #include <atomic>
 #include <cstdio>
@@ -35,6 +36,7 @@ namespace { std::string utf8(const std::wstring& w); std::wstring wide(const std
 #endif
 
 bool fetchUrl(const std::string& url, const std::string& file, const std::string& userAgent) {
+    if (!dect2::internetAllowedUrl(url)) return false;
 #ifdef _WIN32
     // curl.exe from System32 (not one that happens to be first on the PATH), started directly: a console window would flash up for every tile
     wchar_t sys[MAX_PATH + 1] = {0};
@@ -60,6 +62,7 @@ bool fetchUrl(const std::string& url, const std::string& file, const std::string
 
 // reply: when not null, the response body goes there (up to 64 KB)
 static bool postImpl(const std::string& url, const std::string& json, const std::string& userAgent, std::string* reply) {
+    if (!dect2::internetAllowedUrl(url)) return false;
     static std::atomic<unsigned> counter{0};   // the map upload and the automations' webhooks may post at the same time
     const std::string file = cacheDir() + "/post_" + std::to_string(counter++ % 1000) + ".json";
     const std::string outFile = file + ".out";
@@ -118,6 +121,7 @@ static bool postImpl(const std::string& url, const std::string& json, const std:
 }
 
 bool postRequest(const std::string& url, const std::string& body, const std::string& contentType, const std::vector<std::string>& headers, const std::string& userAgent) {
+    if (!dect2::internetAllowedUrl(url)) return false;
     static std::atomic<unsigned> counter{0};
     const unsigned n = counter++ % 1000;
     const std::string bodyFile = cacheDir() + "/postr_" + std::to_string(n) + ".dat", hdrFile = cacheDir() + "/postr_" + std::to_string(n) + ".hdr";
@@ -174,6 +178,7 @@ bool postRequest(const std::string& url, const std::string& body, const std::str
 HttpResult httpRequest(const std::string& method, const std::string& url, const std::string& body, const std::string& userAgent, int timeoutSec) {
     static std::atomic<unsigned> counter{0};
     HttpResult r;
+    if (!dect2::internetAllowedUrl(url)) { r.net = 2; r.detail = "blocked by offline mode"; return r; }
     const std::string base = cacheDir() + "/http_" + std::to_string(counter++ % 1000);
     const std::string inFile = base + ".in", outFile = base + ".out", hdrFile = base + ".hdr";
     const bool post = method == "POST", head = method == "HEAD";

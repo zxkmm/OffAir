@@ -104,11 +104,9 @@ void loadFeedPrefs(App& a) {
     c.aprsServer = d.getS("feedAprsServer", c.aprsServer); c.aprsServerPort = (int)d.getI("feedAprsServerPort", c.aprsServerPort);
     c.stationId = d.getS("feedStationId", c.stationId);
     dect2::PskReporterConfig& r = a.pskr;
-    r.on = d.getB("pskrOn", false); r.call = d.getS("pskrCall", ""); r.locator = d.getS("pskrLocator", ""); r.antenna = d.getS("pskrAntenna", "");
-    if (r.on) dect2::PskReporter::get().configure(r);
+    r.on = false; r.call = d.getS("pskrCall", ""); r.locator = d.getS("pskrLocator", ""); r.antenna = d.getS("pskrAntenna", "");
     dect2::WsprNetConfig& w = a.wsprNet;
-    w.on = d.getB("wsprNetOn", false); w.call = d.getS("wsprNetCall", ""); w.locator = d.getS("wsprNetLocator", "");
-    if (w.on) dect2::WsprNet::get().configure(w);
+    w.on = false; w.call = d.getS("wsprNetCall", ""); w.locator = d.getS("wsprNetLocator", "");
     const int nt = (int)d.getI("feedTgtCount", 0);
     c.targets.clear();
     for (int i = 0; i < nt && i < 16; i++) {
@@ -165,8 +163,8 @@ void saveFeedPrefs(const App& a) {
     d.setB("shareOn", a.share.on); d.setI("sharePort", a.share.port); d.setI("shareLan", a.share.lan ? 1 : 0); d.setI("shareControl", a.share.allowControl ? 1 : 0);
     remoteApiSavePrefs(a);
     rotatorSavePrefs();
-    d.setB("pskrOn", a.pskr.on); d.setS("pskrCall", a.pskr.call); d.setS("pskrLocator", a.pskr.locator); d.setS("pskrAntenna", a.pskr.antenna);
-    d.setB("wsprNetOn", a.wsprNet.on); d.setS("wsprNetCall", a.wsprNet.call); d.setS("wsprNetLocator", a.wsprNet.locator);
+    d.setB("pskrOn", false); d.setS("pskrCall", a.pskr.call); d.setS("pskrLocator", a.pskr.locator); d.setS("pskrAntenna", a.pskr.antenna);
+    d.setB("wsprNetOn", false); d.setS("wsprNetCall", a.wsprNet.call); d.setS("wsprNetLocator", a.wsprNet.locator);
 }
 
 void feedsWindow(App& a) {
@@ -274,13 +272,16 @@ void feedsWindow(App& a) {
         ImGui::EndTooltip();
     }
     dect2::PskReporterConfig& r = a.pskr;
-    bool pc = false;
-    pc |= ImGui::Checkbox(tr("Send spots to PSK Reporter (pskreporter.info)"), &r.on);
+    r.on = false;
+    ImGui::TextDisabled("%s", tr("Auto upload is disabled in this fork."));
+    ImGui::BeginDisabled(true);
+    ImGui::Checkbox(tr("Send spots to PSK Reporter (pskreporter.info)"), &r.on);
     ImGui::Indent();
-    pc |= textField(N_("Your callsign"), r.call, ImGuiInputTextFlags_CharsUppercase, 120);
-    pc |= textField(N_("Your locator"), r.locator, ImGuiInputTextFlags_CharsUppercase, 90);
-    pc |= textField(N_("Antenna"), r.antenna, 0, 200);
+    textField(N_("Your callsign"), r.call, ImGuiInputTextFlags_CharsUppercase, 120);
+    textField(N_("Your locator"), r.locator, ImGuiInputTextFlags_CharsUppercase, 90);
+    textField(N_("Antenna"), r.antenna, 0, 200);
     ImGui::Unindent();
+    ImGui::EndDisabled();
     {
         const dect2::PskReporterStatus s = dect2::PskReporter::get().status();
         ImGui::Indent();
@@ -295,8 +296,6 @@ void feedsWindow(App& a) {
         ImGui::PopTextWrapPos();
         ImGui::Unindent();
     }
-    if (pc) { dect2::PskReporter::get().configure(r); savePrefs(a); }
-
     typo::separatorText(tr("WSPRnet"));
     ImGui::SameLine(); ImGui::TextDisabled("(?)");
     if (ImGui::IsItemHovered()) {
@@ -310,12 +309,15 @@ void feedsWindow(App& a) {
         ImGui::EndTooltip();
     }
     dect2::WsprNetConfig& wn = a.wsprNet;
-    bool wc = false;
-    wc |= ImGui::Checkbox(tr("Send WSPR spots to WSPRnet (wsprnet.org)"), &wn.on);
+    wn.on = false;
+    ImGui::TextDisabled("%s", tr("Auto upload is disabled in this fork."));
+    ImGui::BeginDisabled(true);
+    ImGui::Checkbox(tr("Send WSPR spots to WSPRnet (wsprnet.org)"), &wn.on);
     ImGui::Indent();
-    wc |= textField(N_("Your callsign"), wn.call, ImGuiInputTextFlags_CharsUppercase, 120);
-    wc |= textField(N_("Your locator"), wn.locator, ImGuiInputTextFlags_CharsUppercase, 90);
+    textField(N_("Your callsign"), wn.call, ImGuiInputTextFlags_CharsUppercase, 120);
+    textField(N_("Your locator"), wn.locator, ImGuiInputTextFlags_CharsUppercase, 90);
     ImGui::Unindent();
+    ImGui::EndDisabled();
     {
         const dect2::WsprNetStatus ws = dect2::WsprNet::get().status();
         ImGui::Indent();
@@ -330,8 +332,6 @@ void feedsWindow(App& a) {
         ImGui::PopTextWrapPos();
         ImGui::Unindent();
     }
-    if (wc) { dect2::WsprNet::get().configure(wn); savePrefs(a); }
-
     typo::separatorText(tr("Share my radio (rtl_tcp server)"));
     {
         dect2::ShareConfig& sc = a.share;

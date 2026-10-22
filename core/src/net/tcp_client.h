@@ -1,6 +1,7 @@
 // A TCP client connection with timeouts, for POSIX and Windows (Winsock): the network radios (source_rtltcp.cpp, netradio.cpp).
 #pragma once
 #include "netcompat.h"
+#include "dect2/net/net_policy.h"
 #include <cerrno>
 #include <chrono>
 #include <cstdio>
@@ -70,6 +71,10 @@ inline bool sockRecvAll(sock_t s, void* d, size_t n) {
 
 // A connection to host:port within timeoutMs (name lookup included only as far as the system's resolver allows), or kBadSock with err set
 inline sock_t tcpConnect(const std::string& host, int port, int timeoutMs, std::string& err) {
+    if (!internetAllowedHost(host)) {
+        err = "blocked by offline mode";
+        return kBadSock;
+    }
     netInit();
     addrinfo hints{};
     hints.ai_family = AF_UNSPEC;
