@@ -1,0 +1,28 @@
+# OffAir only (upstream OnAir has no such file, so it never conflicts): publishes the draft that release.yml leaves for a
+# vX.Y.Z-offair.N tag. Upstream keeps its draft until the Windows installer and the Android APK, built on a developer's
+# machine, are attached by hand; the fork publishes with whatever the Release run built (Windows is added if that job succeeded).
+name: OffAir publish release
+
+on:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    if: contains(github.event.workflow_run.head_branch, '-offair.')
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Publish the draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          set -euo pipefail
+          draft=$(gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json isDraft -q .isDraft 2>/dev/null || echo none)
+          if [[ "$draft" != "true" ]]; then echo "No draft for $TAG ($draft)."; exit 0; fi
+          gh release edit "$TAG" -R "$GITHUB_REPOSITORY" --draft=false --latest --title "OffAir ${TAG#v}"
+          echo "Published $TAG" >> "$GITHUB_STEP_SUMMARY"
