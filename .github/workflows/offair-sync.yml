@@ -107,9 +107,9 @@ jobs:
           git push origin "refs/tags/$TAG"
           # a tag pushed with GITHUB_TOKEN starts no workflow, so start the release on the tag; with OFFAIR_SYNC_TOKEN the push has
           # started it already and release.yml's concurrency group keeps only one of the two
-          if [[ -z "${{ secrets.OFFAIR_SYNC_TOKEN }}" ]]; then gh workflow run release.yml --ref "$TAG"; fi
+          if [[ -z "${{ secrets.OFFAIR_SYNC_TOKEN }}" ]]; then gh workflow run release.yml -R "$GITHUB_REPOSITORY" --ref "$TAG"; fi
       - name: Start CI on the merge
         if: steps.merge.outputs.merged == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run ci.yml --ref "$BRANCH"
+        run: gh workflow run ci.yml -R "$GITHUB_REPOSITORY" --ref "$BRANCH"
