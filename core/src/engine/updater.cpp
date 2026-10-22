@@ -2,6 +2,7 @@
 #include "dect2/engine/updater.h"
 #include "dect2/common/str.h"
 #include "dect2/common/timecompat.h"
+#include "dect2/net/net_policy.h"
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
@@ -794,6 +795,7 @@ std::string checksumFor(const std::string& sums, const std::string& name) {
 
 // One download or request through curl: https only (redirects too, at most 5), a size limit, timeouts, and a stalled transfer is given up.
 int Updater::fetch(const std::string& url, std::string* body, const std::string& outFile, int maxTime, uint64_t maxBytes, const std::function<void()>& tick) {
+    if (!internetAllowedUrl(url)) return 7;
     std::vector<std::string> a = {"-fsSL", "--connect-timeout", "15", "--max-time", std::to_string(maxTime), "--max-redirs", "5",
                                   "--max-filesize", std::to_string(maxBytes), "--speed-limit", "1000", "--speed-time", "40"};
     if (url.compare(0, 8, "https://") == 0) { a.push_back("--proto"); a.push_back("=https"); a.push_back("--proto-redir"); a.push_back("=https"); }
@@ -1115,6 +1117,7 @@ void openUrl(const std::string& url) {
 
 // A plain https download to a file through the same curl runner (the speech models: transcribe/models.h). https only, redirects too.
 int curlDownloadFile(const std::string& url, const std::string& outFile, uint64_t maxBytes, int maxTime, const std::atomic<bool>& cancel, const std::function<void()>& tick) {
+    if (!internetAllowedUrl(url)) return 7;
     if (url.compare(0, 8, "https://") != 0) return 1;
     const std::vector<std::string> a = {"-fsSL", "--connect-timeout", "15", "--max-time", std::to_string(maxTime), "--max-redirs", "5", "--max-filesize", std::to_string(maxBytes),
                                         "--speed-limit", "1000", "--speed-time", "40", "--proto", "=https", "--proto-redir", "=https", "--retry", "2",

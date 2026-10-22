@@ -7,6 +7,7 @@
 #include "dect2/hdr/hdr_rx.h"
 #include "dect2/source/hamlib_link.h"
 #include "dect2/source/iq_file.h"
+#include "dect2/net/net_policy.h"
 #include <algorithm>
 #include <cctype>
 #include <memory>
@@ -184,6 +185,10 @@ static void statusNotes(App& a, bool run, AdcStatus adc) {
 }
 
 void statusBar(App& a) {
+    if (!dect2::internetEnabled()) {
+        ImGui::TextColored(pal::badRed(), "%s", tr("OFFLINE MODE: internet is blocked"));
+        flowBreak();
+    }
     {   // live transcripts are on: always visible
         std::string t;
         if (tx::indicator(t)) { ImGui::TextColored(pal::badRed(), "\xE2\x97\x8F"); ImGui::SameLine(0, 4 * gUi); ImGui::TextColored(pal::warnAmber(), "%s", t.c_str()); }
