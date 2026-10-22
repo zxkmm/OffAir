@@ -8,6 +8,7 @@
 #include <chrono>
 #include <cstring>
 #include "../net/netcompat.h"
+#include "dect2/net/net_policy.h"
 
 namespace dect2 {
 
@@ -90,6 +91,7 @@ bool IridiumBitsWriter::openStream(bool tcp, const std::string& host, int port, 
     sockaddr_in a{};
     a.sin_family = AF_INET; a.sin_port = htons((uint16_t)port);
     const std::string h = host.empty() ? "127.0.0.1" : host;
+    if (!dect2::internetAllowedHost(h)) { if (err) *err = dect2::kOfflineError; return false; }   // OffAir
     if (inet_pton(AF_INET, h.c_str(), &a.sin_addr) != 1) { if (err) *err = "host must be an IPv4 address"; return false; }
     tcp_ = tcp; host_ = h; port_ = port; retryAt_ = 0; streamed_ = 0; stream_ = true;
     if (!tcp) {

@@ -82,7 +82,7 @@ UpOutcome parseUpResponse(UpService s, const UpResponse& r) {
 UpTransport curlTransport() {
     return [](const std::string& url, const std::string& body) {
         UpResponse r;
-        if (!internetAllowedUrl(url)) { r.err = "blocked by offline mode"; return r; }
+        if (!internetAllowedUrl(url)) { r.err = kOfflineError; return r; }   // OffAir
         if (!isHttps(url)) { r.err = "refused: not https"; return r; }
         const char* t = getenv("TMPDIR"); if (!t) t = getenv("TEMP"); if (!t) t = "/tmp";
         const std::string stem = std::string(t) + "/onair_up_" + std::to_string((long long)time(nullptr)) + "_" + std::to_string(rand());
@@ -200,9 +200,7 @@ int HamUploader::poll(long long now) {
         if (idx == (size_t)-1) continue;
         const UpRequest rq = buildUpRequest(sv, c, rec);
         UpResponse rs;
-        if (!internetAllowedUrl(rq.url)) rs.err = "blocked by offline mode";
-        else if (isHttps(rq.url) || (loopback_ && isLoopback(rq.url))) rs = tr_(rq.url, rq.body);
-        else rs.err = "refused: not https";
+        if (isHttps(rq.url) || (loopback_ && isLoopback(rq.url))) rs = tr_(rq.url, rq.body); else rs.err = "refused: not https";
         const UpOutcome oc = parseUpResponse(sv, rs);
         made++;
         std::lock_guard<std::mutex> lk(mu_);

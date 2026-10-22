@@ -673,7 +673,7 @@ std::string updateResultPath() { const std::string t = tempRoot(); return t + (t
 // ---------------------------------------------------------------- the updater
 
 Updater::Updater(const std::string& v) : current_(v) {
-    api_ = "https://api.github.com/repos/adswill/OnAir/releases?per_page=12";
+    api_ = std::string("https://api.github.com/repos/") + kOffAirRepo + "/releases?per_page=12";   // OffAir: this fork's releases
     if (const char* e = getenv("ONAIR_UPDATE_URL")) if (*e) setApiUrl(e);
     setExecutable(executablePath());
 }
@@ -731,8 +731,8 @@ bool mirrorEnabled(const MirrorConfig& c) {
 }
 
 bool isOfficialUrl(const std::string& u) {
-    return u.compare(0, 44, "https://api.github.com/repos/adswill/OnAir/r") == 0
-        || u.compare(0, 42, "https://github.com/adswill/OnAir/releases/") == 0;
+    return u.rfind(std::string("https://api.github.com/repos/") + kOffAirRepo + "/r", 0) == 0   // OffAir
+        || u.rfind(std::string("https://github.com/") + kOffAirRepo + "/releases/", 0) == 0;
 }
 
 static std::string percentEncode(const std::string& s) {
@@ -1099,9 +1099,9 @@ void Updater::openReleasePage() const {
         std::lock_guard<std::mutex> lk(mu_);
         url = st_.release.pageUrl;
         // after a failed installation the page of the version that did not install
-        if (url.empty() && st_.lastResult.found && !st_.lastResult.ok) url = "https://github.com/adswill/OnAir/releases/tag/v" + st_.lastResult.version;
+        if (url.empty() && st_.lastResult.found && !st_.lastResult.ok) url = std::string("https://github.com/") + kOffAirRepo + "/releases/tag/v" + st_.lastResult.version;
     }
-    if (url.empty()) url = "https://github.com/adswill/OnAir/releases";
+    if (url.empty()) url = std::string("https://github.com/") + kOffAirRepo + "/releases";
     openUrl(url);
 }
 

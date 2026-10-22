@@ -97,6 +97,7 @@ namespace {
 
 bool wsprHttpPost(const std::string& host, int port, const std::string& body, int timeoutMs, int& httpStatus, std::string& err) {
     httpStatus = 0;
+    if (!uploadAllowedHost(host)) { err = kNoUploadError; return false; }   // OffAir
     sock_t s = tcpConnect(host, port, timeoutMs, err);
     if (s == kBadSock) return false;
     const std::string req = "POST /post/ HTTP/1.1\r\nHost: " + host + "\r\nContent-Type: application/x-www-form-urlencoded\r\nConnection: close\r\nContent-Length: " + std::to_string(body.size()) + "\r\n\r\n" + body;

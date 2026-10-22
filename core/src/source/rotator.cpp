@@ -2,6 +2,7 @@
 #include "dect2/source/rotator.h"
 #include "dect2/net/remote_api.h"
 #include "../net/netcompat.h"
+#include "dect2/net/net_policy.h"
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -287,6 +288,7 @@ bool openSerial(const std::string& dev, int baud, Io& io, std::string& err) {
 
 bool openTcp(const std::string& host, int port, Io& io, std::string& err) {
     io.closeAll();
+    if (!dect2::internetAllowedHost(host)) { err = dect2::kOfflineError; return false; }   // OffAir
     netInit();
     sock_t s = socket(AF_INET, SOCK_STREAM, 0);
     if (s == kBadSock) { err = "cannot open a socket"; return false; }

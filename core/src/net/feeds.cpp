@@ -156,6 +156,7 @@ struct Feeds::Impl {
         if (u.s != kBadSock && u.host == host && u.port == port) return;
         closeUdp(id);
         u.host = host; u.port = port;
+        if (!uploadAllowedHost(host)) { st[id].lastError = kNoUploadError; return; }   // OffAir
         addrinfo hints{};
         hints.ai_family = AF_INET;
         hints.ai_socktype = SOCK_DGRAM;
@@ -236,6 +237,7 @@ struct Feeds::Impl {
         FeedStatus& S = st[kFeedAprsIs];
         if (!live.on[kFeedAprsIs]) { S.state = "off"; return; }
         if (live.aprsCall.empty()) { S.state = "needs a callsign"; return; }
+        if (!uploadAllowedHost(live.aprsServer)) { S.state = kNoUploadError; return; }   // OffAir
         if (is == kBadSock) {
             if (now < isRetryAt) { S.state = "waiting to connect again"; return; }
             std::string err;

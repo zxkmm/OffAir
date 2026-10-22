@@ -115,7 +115,8 @@ void load(HamUi& h) {
         if (ham::adifAppend(h.logPath, r, err)) { h.worked.add(r); h.logged++; h.lastLog = r.call; } else h.status = err;
         h.up.enqueue(r, (long long)time(nullptr));   // queued only; nothing leaves unless a service is on and auto upload is ticked
     };
-    h.upCfg.autoUpload = false;
+    h.upCfg.autoUpload = p.getB("ham.up.auto", false);
+    h.upCfg.autoUpload = false;   // OffAir: no automatic upload
     h.upCfg.on[0] = p.getB("ham.up.qrz", false); h.upCfg.on[1] = p.getB("ham.up.club", false); h.upCfg.on[2] = p.getB("ham.up.eqsl", false);
     h.upCfg.qrzKey = p.getS("ham.up.qrzKey", ""); h.upCfg.clubEmail = p.getS("ham.up.clubEmail", ""); h.upCfg.clubPassword = p.getS("ham.up.clubPw", "");
     h.upCfg.clubApiKey = p.getS("ham.up.clubApi", ""); h.upCfg.eqslUser = p.getS("ham.up.eqslUser", ""); h.upCfg.eqslPassword = p.getS("ham.up.eqslPw", "");
@@ -140,11 +141,9 @@ void uploadSection(HamUi& h) {
     }
     ImGui::TextWrapped("%s", tr("Privacy: when a service is switched on, each logged QSO is sent to it over HTTPS: the other station's callsign and grid, mode, band and frequency, the reports, the UTC time, and your own callsign and grid. Nothing else, and nothing at all while a service is off. Your keys and passwords stay on this computer and go only to that service. LoTW is not supported (it needs TQSL certificates): export the ADIF log and sign it with TQSL."));
     bool ch = false;
-    h.upCfg.autoUpload = false;
-    ImGui::BeginDisabled(true);
-    ImGui::Checkbox(tr("Upload automatically after logging"), &h.upCfg.autoUpload);
+    ImGui::BeginDisabled(true);   // OffAir: no automatic upload
+    ch |= ImGui::Checkbox(tr("Upload automatically after logging"), &h.upCfg.autoUpload);
     ImGui::EndDisabled();
-    ImGui::TextDisabled("%s", tr("Auto upload is disabled in this fork."));
     ImGui::Separator();
     ch |= ImGui::Checkbox("QRZ.com Logbook", &h.upCfg.on[0]);
     ImGui::SetNextItemWidth(260 * gUi);
@@ -162,7 +161,7 @@ void uploadSection(HamUi& h) {
     ImGui::SetNextItemWidth(160 * gUi);
     if (ImGui::InputText(tr("eQSL password"), h.eqslPw, sizeof h.eqslPw, ImGuiInputTextFlags_Password)) { h.upCfg.eqslPassword = h.eqslPw; ch = true; }
     if (ch) {
-        p.setB("ham.up.auto", false); p.setB("ham.up.qrz", h.upCfg.on[0]); p.setB("ham.up.club", h.upCfg.on[1]); p.setB("ham.up.eqsl", h.upCfg.on[2]);
+        p.setB("ham.up.auto", h.upCfg.autoUpload); p.setB("ham.up.qrz", h.upCfg.on[0]); p.setB("ham.up.club", h.upCfg.on[1]); p.setB("ham.up.eqsl", h.upCfg.on[2]);
         p.setS("ham.up.qrzKey", h.upCfg.qrzKey); p.setS("ham.up.clubEmail", h.upCfg.clubEmail); p.setS("ham.up.clubPw", h.upCfg.clubPassword);
         p.setS("ham.up.clubApi", h.upCfg.clubApiKey); p.setS("ham.up.eqslUser", h.upCfg.eqslUser); p.setS("ham.up.eqslPw", h.upCfg.eqslPassword);
         p.flush();

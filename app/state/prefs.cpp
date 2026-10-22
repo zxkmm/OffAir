@@ -346,14 +346,14 @@ void loadPrefs(App& a) {
     loadSpectrumRanges(d, a);
     if (d.has("wideMaskLo")) a.wideFamMask = (uint64_t)(uint32_t)d.getI("wideMaskLo", 0) | ((uint64_t)(uint32_t)d.getI("wideMaskHi", 0) << 32);
     if (a.rxId == 1 && a.mapSend && !a.mapConsent) a.mapSend = false;   // never on without consent
-    if (a.rxId == 1) { a.mapSend = false; a.mapMsgs = false; a.mapJam = false; a.mapVoice = false; }   // fork policy: map auto upload disabled
+    if (a.rxId == 1) { a.mapSend = false; a.mapMsgs = false; a.mapJam = false; a.mapVoice = false; }   // OffAir: no map upload
     i18n::set(a.uiLang.empty() ? plat::uiLanguage() : a.uiLang);
     loadFmStations(d, a);
     if (d.has("fmSaved")) {   // the saved-stations library, separate from the band-scan list in fmStations
         for (const auto& r : fmSavedDecode(d.getS("fmSaved", ""))) a.fmSaved.push_back(r);
     }
     if (a.rxId == 1) loadFeedPrefs(a);   // the feeds are shared by all receivers: RX 1 owns their settings
-    if (a.rxId == 1) { a.internetOn = false; dect2::setInternetEnabled(false); }   // default offline on every start
+    if (a.rxId == 1) dect2::setInternetEnabled(false);   // OffAir: offline at every start
     a.channels = d.getChannels();
 }
 

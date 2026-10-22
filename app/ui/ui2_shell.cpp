@@ -391,9 +391,8 @@ static void viewMenu(App& a) {
         if (ImGui::BeginMenu(tr("Language"))) { languageMenuItems(a); ImGui::EndMenu(); }
         ImGui::Separator();
         if (ImGui::MenuItem(tr("Reduce CPU when hidden"), nullptr, &a.reduceCpuHidden)) savePrefs(a);
-        a.internetOn = dect2::internetEnabled();
-        if (ImGui::MenuItem(tr("Enable internet access (this session)"), nullptr, &a.internetOn)) dect2::setInternetEnabled(a.internetOn);
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tr("Off by default on every start. Keep off to block internet access deep in networking code."));
+        if (bool on = dect2::internetEnabled(); ImGui::MenuItem(tr("Enable internet access (this session)"), nullptr, &on)) dect2::setInternetEnabled(on);   // OffAir
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tr("OffAir: off at every start. While off, nothing connects outside this computer and the local network. Automatic uploads stay off either way."));
         {   // opt-in Discord Rich Presence
             const bool have = *discord::appId() != 0;
             ImGui::BeginDisabled(!have);

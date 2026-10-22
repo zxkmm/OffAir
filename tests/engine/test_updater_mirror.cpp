@@ -66,17 +66,17 @@ static bool waitPhase(Updater& u, std::function<bool(Updater::Phase)> ok, int ms
 
 int main() {
     // ---- the address templates
-    const std::string api = "https://api.github.com/repos/adswill/OnAir/releases?per_page=12";
-    const std::string asset = "https://github.com/adswill/OnAir/releases/download/v1.0.0/a.tar.gz";
+    const std::string api = "https://api.github.com/repos/zxkmm/OffAir/releases?per_page=12";
+    const std::string asset = "https://github.com/zxkmm/OffAir/releases/download/v1.0.0/a.tar.gz";
     CHECK(mirrorUrl("https://m.example/{url}", api) == "https://m.example/" + api, "{url} template");
-    CHECK(mirrorUrl("https://m.example/p?u={urlenc}&x=1", asset) == "https://m.example/p?u=https%3A%2F%2Fgithub.com%2Fadswill%2FOnAir%2Freleases%2Fdownload%2Fv1.0.0%2Fa.tar.gz&x=1", "{urlenc} template");
+    CHECK(mirrorUrl("https://m.example/p?u={urlenc}&x=1", asset) == "https://m.example/p?u=https%3A%2F%2Fgithub.com%2Fzxkmm%2FOffAir%2Freleases%2Fdownload%2Fv1.0.0%2Fa.tar.gz&x=1", "{urlenc} template");
     CHECK(mirrorUrl("https://m.example/gh", asset) == "https://m.example/gh/" + asset && mirrorUrl("https://m.example/gh/", asset) == "https://m.example/gh/" + asset, "base address");
     CHECK(mirrorUrl("http://m.example/{url}", api).empty(), "http mirror refused");
     CHECK(mirrorUrl("{url}", api).empty() && mirrorUrl("", api).empty() && mirrorUrl("ftp://m.example/{url}", api).empty(), "empty / not https refused");
     CHECK(mirrorUrl("https://m.example/ {url}", api).empty() && mirrorUrl("https://m.example/\n{url}", api).empty(), "spaces and control characters refused");
     CHECK(mirrorUrl("https://m.example/{url}", "https://evil.example/x").empty() && mirrorUrl("https://m.example/{url}", "https://github.com/other/repo/releases/download/x").empty(), "only the project's own addresses go to a mirror");
     CHECK(mirrorUrl("https://m.example/" + std::string(500, 'a') + "/{url}", api).empty(), "too long refused");
-    CHECK(isOfficialUrl(api) && isOfficialUrl(asset) && !isOfficialUrl("https://github.com/adswill/OnAir-evil/releases/x") && !isOfficialUrl("https://api.github.com.evil.example/repos/adswill/OnAir/releases"), "official addresses");
+    CHECK(isOfficialUrl(api) && isOfficialUrl(asset) && !isOfficialUrl("https://github.com/zxkmm/OffAir-evil/releases/x") && !isOfficialUrl("https://api.github.com.evil.example/repos/zxkmm/OffAir/releases"), "official addresses");
     // ---- who may be contacted
     MirrorConfig c; c.tmpl = "https://m.example/{url}";
     CHECK(!mirrorEnabled(c), "default: the mirror is off");

@@ -1,0 +1,115 @@
+# OffAir only (upstream OnAir has no such file, so it never conflicts): follows upstream and releases the fork.
+#  - every day: merges adswill/OnAir main into offair_main. A clean merge is pushed and CI runs on it; when upstream has
+#    published a new version tag (vX.Y.Z), the merged tree is released as vX.Y.Z-offair.1. A conflict is not pushed: the
+#    run fails and its summary lists the files to resolve by hand.
+#  - by hand (Actions > OffAir sync and release > Run workflow): the same, and "release" also tags the current offair_main as
+#    the next vX.Y.Z-offair.N of the version in CMakeLists.txt.
+# Fork tags carry "-offair.N", so they never collide with upstream's vX.Y.Z / vX.Y.Z-beta.N, and the updater (pointed at this
+# repository by core/include/dect2/net/net_policy.h) sees a newer -offair.N as newer.
+#
+# The default GITHUB_TOKEN cannot push a merge that changes upstream's .github/workflows files. Add a repository secret
+# OFFAIR_SYNC_TOKEN (a fine-grained token for this repository with Contents and Workflows read/write) to cover that case.
+name: OffAir sync and release
+
+on:
+  schedule:
+    - cron: "41 3 * * *"
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Release the current offair_main as the next vX.Y.Z-offair.N"
+        type: boolean
+        default: false
+
+concurrency:
+  group: offair-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+
+env:
+  UPSTREAM: https://github.com/adswill/OnAir.git
+  BRANCH: offair_main
+
+jobs:
+  sync:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BRANCH }}
+          fetch-depth: 0
+          token: ${{ secrets.OFFAIR_SYNC_TOKEN || github.token }}
+      - name: Merge upstream
+        id: merge
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream "$UPSTREAM"
+          # upstream tags go to their own namespace: they are only read here, never pushed to this repository
+          git fetch --no-tags upstream main "+refs/tags/*:refs/upstream-tags/*"
+          if git merge-base --is-ancestor upstream/main HEAD; then
+            echo "Already up to date with upstream." >> "$GITHUB_STEP_SUMMARY"
+            echo "merged=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! git merge --no-edit -X diff-algorithm=histogram upstream/main -m "Merge upstream OnAir $(git rev-parse --short upstream/main) into $BRANCH"; then
+            {
+              echo "## Merge conflict with upstream, nothing was pushed"
+              echo "Files:"; git diff --name-only --diff-filter=U | sed 's/^/- /'
+              echo
+              echo "Resolve locally:"
+              echo '```'
+              echo "git fetch https://github.com/adswill/OnAir.git main && git merge FETCH_HEAD"
+              echo "# fix the files, keeping the lines marked // OffAir, then: git commit && git push"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            git merge --abort
+            echo "::error::Upstream merge conflicts; see the run summary."
+            exit 1
+          fi
+          git push origin "HEAD:$BRANCH" || {
+            echo "::error::Push refused. If upstream changed .github/workflows, add the OFFAIR_SYNC_TOKEN secret (see the top of this file)."
+            exit 1
+          }
+          echo "Merged upstream $(git rev-parse --short upstream/main)." >> "$GITHUB_STEP_SUMMARY"
+          echo "merged=true" >> "$GITHUB_OUTPUT"
+      - name: Pick the release tag
+        id: tag
+        run: |
+          set -euo pipefail
+          # newest finished upstream version reachable from upstream main
+          up=$(git for-each-ref --merged upstream/main --format='%(refname:lstrip=2)' refs/upstream-tags \
+               | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 || true)
+          base=$(grep -m1 'project(' CMakeLists.txt | sed -E 's/.*VERSION ([0-9.]+).*/\1/')
+          want=""
+          if [[ "${{ inputs.release }}" == "true" ]]; then
+            want="$base"
+          elif [[ -n "$up" && "${up#v}" == "$base" ]] && [[ -z "$(git tag -l "v${base}-offair.*")" ]]; then
+            want="$base"   # upstream released this version and the fork has not followed yet
+          fi
+          if [[ -z "$want" ]]; then echo "tag=" >> "$GITHUB_OUTPUT"; exit 0; fi
+          n=$(git tag -l "v${want}-offair.*" | sed -E 's/.*-offair\.//' | grep -E '^[0-9]+$' | sort -n | tail -1 || true)
+          tag="v${want}-offair.$(( ${n:-0} + 1 ))"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Release: $tag" >> "$GITHUB_STEP_SUMMARY"
+      - name: Tag and start the release
+        if: steps.tag.outputs.tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git tag -a "$TAG" -m "OffAir $TAG"
+          git push origin "refs/tags/$TAG"
+          # a tag pushed with GITHUB_TOKEN starts no workflow, so start the release on the tag; with OFFAIR_SYNC_TOKEN the push has
+          # started it already and release.yml's concurrency group keeps only one of the two
+          if [[ -z "${{ secrets.OFFAIR_SYNC_TOKEN }}" ]]; then gh workflow run release.yml --ref "$TAG"; fi
+      - name: Start CI on the merge
+        if: steps.merge.outputs.merged == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run ci.yml --ref "$BRANCH"

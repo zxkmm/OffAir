@@ -5,6 +5,7 @@
 #include "../app.h"
 #include "../state/receivers.h"
 #include "map_ask.h"
+#include "dect2/net/net_policy.h"
 #include "../rooms/rooms.h"
 #include "../adsb/adsb_acars.h"
 #include "../transcribe/transcribe_app.h"
@@ -612,6 +613,7 @@ std::string buildJson(const std::string& station, const std::vector<Track>& trac
 }
 
 void startPost(const std::string& url, const std::string& body, int n) {
+    if (!dect2::uploadAllowedUrl(url)) return;   // OffAir
     if (gBusy.exchange(true)) return;
     std::lock_guard<std::mutex> lk(gThMu);
     if (gTh.joinable()) gTh.join();
@@ -714,6 +716,7 @@ void jamTick(App& s) {
     if (body.empty()) return;
     busy = true;
     const std::string url = originOf(s) + "/jam", ua = std::string("OnAir/") + ONAIR_VERSION + " (map jam)";
+    if (!dect2::uploadAllowedUrl(url)) { busy = false; return; }   // OffAir
     dect2::namedThread("onair-mapsend2", [url, body, ua] {
         const bool ok = plat::postJson(url, body, ua);
         mapLog("jam %s body=%zu B", ok ? "ok" : "failed", body.size());
@@ -815,15 +818,15 @@ void txOffToast() {
 // It asks at every start, also after consent was given, until "No, do not ask again" is chosen; that lasts until the next update of OnAir
 // (another ONAIR_VERSION). "Not now" turns sending off for the session only. Never while transmitting.
 void startupQuestion(App& a) {
+    if (dect2::kOffAirNoUploads) return;   // OffAir: no map upload, so no question
     static bool asked = false;
     if (asked) return;
     App& s = rootApp(a);
-    stopSend(s);
-    s.mapSend = false;
-    s.mapMsgs = false;
-    s.mapJam = false;
-    s.mapVoice = false;
+    if (s.mapDeclined && s.mapDeclinedVersion != ONAIR_VERSION) { s.mapDeclined = false; s.mapDeclinedVersion.clear(); savePrefs(s); }   // an update: ask again
+    if (!mapShouldAsk(s.mapConsent, s.mapDeclined, s.mapDeclinedVersion, ONAIR_VERSION, gTxHold || txActive())) { asked = true; return; }
+    if (ImGui::GetFrameCount() < 90) return;   // after the first frames: the window is up and the layout is settled
     asked = true;
+    gAskConsent = true;
 }
 
 void mapPopups(App& a) {
@@ -837,14 +840,35 @@ void mapPopups(App& a) {
 
 void sendToggle(App& a, bool menu) {
     App& s = rootApp(a);
-    if (s.mapSend) stopSend(s);
-    s.mapSend = false;
-    ImGui::BeginDisabled(true);
-    if (menu) ImGui::MenuItem(tr("Send data to map server"), nullptr, false);
-    else { bool v = false; ImGui::Checkbox(tr("Send data to map server"), &v); }
-    ImGui::EndDisabled();
-    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-        ImGui::SetTooltip("%s", tr("Auto upload is disabled in this fork."));
+    if (dect2::kOffAirNoUploads) {   // OffAir: no map upload
+        ImGui::BeginDisabled(true);
+        if (menu) ImGui::MenuItem(tr("Send data to map server"), nullptr, false);
+        else { bool v = false; ImGui::Checkbox(tr("Send data to map server"), &v); }
+        ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip("%s", tr("OffAir does not upload to the internet."));
+        return;
+    }
+    if (gTxHold || txActive()) {
+        ImGui::BeginDisabled(true);
+        if (menu) ImGui::MenuItem(tr("Send data to map server"), nullptr, false);
+        else { bool v = false; ImGui::Checkbox(tr("Send data to map server"), &v); }
+        ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+            ImGui::SetTooltip("%s", tr("Turned off while transmitting, so a signal from this radio is not sent to the map."));
+        return;
+    }
+    const bool on = s.mapSend;
+    bool hit = false;
+    if (menu) hit = ImGui::MenuItem(tr("Send data to map server"), nullptr, on);
+    else {
+        bool v = on;
+        hit = ImGui::Checkbox(tr("Send data to map server"), &v) && v != on;
+    }
+    if (!hit) return;
+    if (!on) {
+        if (!s.mapConsent) gAskConsent = true;
+        else beginSend(s);
+    } else stopSend(s);
 }
 
 } // namespace

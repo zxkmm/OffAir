@@ -174,6 +174,7 @@ struct PskReporter::Impl {
         if (sock != kBadSock && toHost == cfg.host && toPort == cfg.port) return true;
         closeSock();
         netInit();
+        if (!uploadAllowedHost(cfg.host)) { st.lastError = kNoUploadError; return false; }   // OffAir
         addrinfo hints{}; hints.ai_family = AF_INET; hints.ai_socktype = SOCK_DGRAM;
         addrinfo* res = nullptr;
         if (getaddrinfo(cfg.host.c_str(), std::to_string(cfg.port).c_str(), &hints, &res) != 0 || !res) { st.lastError = "cannot find " + cfg.host; if (res) freeaddrinfo(res); return false; }

@@ -86,6 +86,7 @@ struct FeedTargets::Impl {
         Live& l = L[i]; FeedTargetStatus& s = st[i];
         if (!tg.enabled) return;
         if (tg.host.empty() || tg.port <= 0 || tg.port > 65535) { s.state = "needs a host and a port"; return; }
+        if (!uploadAllowedHost(tg.host)) { s.connected = false; s.state = kNoUploadError; return; }   // OffAir
         if (tg.proto == FeedProto::Udp) {
             if (l.s != kBadSock) { s.connected = true; s.state = "sending to " + tg.host + ":" + std::to_string(tg.port) + " (UDP)"; return; }
             if (t < l.retryAt) return;

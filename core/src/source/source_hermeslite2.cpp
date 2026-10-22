@@ -26,6 +26,7 @@
 // (C1[1:0]: 48/96/192/384 ksps), the receiver count (C4[5:3]) and start/stop are the HL2's own.
 #include "native_common.h"
 #include "../net/netcompat.h"
+#include "dect2/net/net_policy.h"
 #include "dect2/net/netradio.h"
 #include <algorithm>
 #include <chrono>
@@ -125,6 +126,7 @@ long long recvFrom(sock_t s, unsigned char* b, size_t n, sockaddr_in& from) {
 
 // host (a name or an IPv4 address) and port as a socket address; false when it cannot be found
 bool resolve4(const std::string& host, int port, sockaddr_in& out) {
+    if (!dect2::internetAllowedHost(host)) return false;   // OffAir offline mode
     netInit();
     addrinfo hints{};
     hints.ai_family = AF_INET;

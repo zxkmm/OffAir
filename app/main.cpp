@@ -20,6 +20,7 @@
 #include "ui/typography.h"
 #include "state/workspace.h"
 #include "state/layout.h"
+#include "dect2/net/net_policy.h"
 
 // code runs before the library's (the linker places the program's own objects first), so the check here comes in time.
 #if defined(DECT2_REQUIRES_AVX2) && (defined(__x86_64__) || defined(__i386__)) && (defined(__GNUC__) || defined(__clang__))
@@ -305,6 +306,7 @@ int main(int argc, char** argv) {
         layoutTick(app, !app.touchUi && !o.shotPath);   // per-mode window positions (desktop; not in --shot runs)
         workspaceSessionTick(app);   // every few seconds: the last-session file (crash restore)
         discordTick(app);
+        if (static int net = -1; net != (int)dect2::internetEnabled()) { net = dect2::internetEnabled(); glfwSetWindowTitle(window, net ? "OffAir - internet ON" : "OffAir - OFFLINE"); }   // OffAir
         {
             paceFrame(window, app, o, frameNext, lastInputT);
             glfwPollEvents();
