@@ -1,4 +1,5 @@
 name: Release
+# Workflow file touch to refresh Actions indexing on forks.
 
 # A version tag (git tag v0.2.6 && git push --tags) builds the installers and attaches them to that release.
 # A push to a release branch (release-0.2.6) builds the same installers, deletes the previous beta of that
