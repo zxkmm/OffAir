@@ -65,11 +65,12 @@ inline std::string urlHost(const std::string& url) {
 }
 
 inline bool internetAllowedHost(const std::string& host) { return localHost(host) || internetEnabled(); }
-inline bool internetAllowedUrl(const std::string& url) { return internetAllowedHost(urlHost(url)); }
+inline bool fileUrl(const std::string& url) { return url.compare(0, 7, "file://") == 0; }   // a local file, not the network
+inline bool internetAllowedUrl(const std::string& url) { return fileUrl(url) || internetAllowedHost(urlHost(url)); }
 
 // automatic uploads: the local network only, the internet switch does not open them
 inline bool uploadAllowedHost(const std::string& host) { return localHost(host); }
-inline bool uploadAllowedUrl(const std::string& url) { return uploadAllowedHost(urlHost(url)); }
+inline bool uploadAllowedUrl(const std::string& url) { return fileUrl(url) || uploadAllowedHost(urlHost(url)); }
 
 inline constexpr const char* kOfflineError = "blocked: OffAir offline mode (View > Enable internet access)";
 inline constexpr const char* kNoUploadError = "blocked: OffAir does not upload to the internet";
